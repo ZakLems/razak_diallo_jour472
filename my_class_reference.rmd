@@ -33,3 +33,18 @@ setwd("~/jour472/data_journalism_2024_fall")
 install.packages("tidyverse")
 library(tidyverse)
 ```
+
+### Read rds files (binary file type for R)
+```{r}
+read_rds()
+```
+
+### Peak at data as a list of the columns, the data type for each column and and the first few values for each column
+```{r}
+glimpse()
+```
+
+### Peak at the data headers and first 6 rows of data
+```{r}
+head()
+```
