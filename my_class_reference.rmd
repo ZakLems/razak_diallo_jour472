@@ -48,3 +48,41 @@ glimpse()
 ```{r}
 head()
 ```
+
+### calculate new metrics in a new field using existing fields of data
+```{r}
+mutate()
+```
+
+### get summary statistics of data
+```{r}
+summary(data)
+```
+
+
+### list columns 
+```{r}
+colnames(data)
+```
+
+### filter data; below would only show courses where the department column is "Journalism"
+```{r}
+journalism_courses <- umd_courses |> filter(department == "Journalism")
+```
+
+### choose what columns should be apart of the object
+```{r}
+select()
+```
+
+### search for pattern in string
+```{r}
+filter(str_detect(title, "Shakespeare"))
+```
+
+### set date column to proper format
+```{r}
+maryland_expenses <- maryland_expenses |> mutate(expenditure_date=mdy(expenditure_date))
+#mdy being the key here
+```
+
