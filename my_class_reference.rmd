@@ -86,3 +86,18 @@ maryland_expenses <- maryland_expenses |> mutate(expenditure_date=mdy(expenditur
 #mdy being the key here
 ```
 
+### string length
+```{r}
+filter(str_length(`Vendor Zip`) < 5)
+```
+
+### standardize column names
+```{r}
+clean_names(data)
+```
+
+### check for dupes
+```{r}
+data |> get_dupes()
+```
+
