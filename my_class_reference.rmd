@@ -101,3 +101,15 @@ clean_names(data)
 data |> get_dupes()
 ```
 
+### case when
+```{r}
+maryland_expenses_location <- maryland_expenses |> 
+  mutate(
+    spending_location = case_when(
+    str_detect(address, "Maryland") ~ "In-state",
+    .default = "Out of state"
+  )
+  )
+```
+
+
