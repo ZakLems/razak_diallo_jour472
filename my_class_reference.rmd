@@ -113,3 +113,24 @@ maryland_expenses_location <- maryland_expenses |>
 ```
 
 
+### filter by starting with (^)
+```{r}
+filter(str_detect(data, "^w|^W"))
+```
+
+### key collision for making things alike: "The key collision merge function takes each string and extracts the key parts of it. It then puts every key in a bin based on the keys matching."
+```{r}
+cleaned_md_grant_loans <- md_grant_loans |>
+  mutate(grantee_clean=key_collision_merge(Grantee)) |>
+  select(Grantee, grantee_clean, everything())
+
+cleaned_md_grant_loans
+```
+
+## Another merging algorithim n_gram_merge()
+```{r}
+cleaned_md_grant_loans <- md_grant_loans |>
+  mutate(grantee_clean=n_gram_merge(Grantee)) |>
+  select(Grantee, grantee_clean, everything())
+```
+
