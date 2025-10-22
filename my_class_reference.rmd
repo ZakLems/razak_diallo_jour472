@@ -143,3 +143,21 @@ fentanyl_deaths <- read_csv("tabula-Annual_2020_Drug_Intox_Report.csv", col_name
   mutate(jurisdiction = str_squish(str_replace_all(jurisdiction,'\\.','')))
 ```
 
+### bind rows - combines data into a single frame
+```{r}
+# bind_rows with list
+county_voters_combined <- bind_rows(list(county_voters_2016, county_voters_2018, county_voters_2020, county_voters_2022, county_voters_2024))
+View(county_voters_combined)
+```
+
+# join - combines table by common element
+```{r}
+maryland_population_with_voters_and_demographics <- maryland_population_with_voters |> left_join(maryland_demographics, join_by(COUNTY==NAME))
+```
+
+#change column type
+```{r}
+maryland_zcta <- maryland_zcta |> mutate(across(ZCTA5N, as.character))
+```
+
+
