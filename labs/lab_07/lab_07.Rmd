@@ -1,0 +1,131 @@
+---
+title: "lab_07"
+author: "Derek Willis"
+date: "2025-01-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## You will need
+
+-   A Census API key
+
+## Load libraries and establish settings
+
+You'll need to load two packages for this: the tidyverse and tidycensus.
+
+**Task** load these two packages
+
+```{r}
+# Turn off scientific notation
+options(scipen=999)
+
+# Load the tidyverse.
+library(tidyverse)
+library(tidycensus)
+```
+
+## Setup Census API
+
+You'll need your Census API Key:
+
+**Task** set your API Key if you haven't already. You won't need to install or overwrite it.
+
+```{r echo=FALSE}
+```
+
+## Load and view ACS variables
+
+You'll also need to load the list of American Community Survey variables from the 2023 5-year estimates so you can identify the codes you need:
+
+**Task** load the variables from the 2021 5-year ACS (which is called "acs5") and save them to a dataframe
+
+```{r}
+acs5_2021 <- load_variables(2021, "acs5", cache = TRUE)
+```
+
+## Answer questions
+
+**Q1** What is the Maryland jurisdiction with the lowest median age, according to the ACS 2023 5-year estimates? You will need to find the variable for median age first. **A1**
+Baltimore City has the lowest median age
+```{r}
+md_medianAge <- get_acs(geography = "county",
+              variables = c(medianAge = "B01002_001"),
+              state = "MD",
+              year = 2021)
+
+md_medianAge |> arrange(desc(estimate))
+```
+
+**Q2** Which Maryland counties have a median age of at least 50? You can use the dataframe you just made to answer this, but you must write code to display only those counties with a median age of at least 50. **A2**
+Talbot and Worcester have median ages of at least 50.
+```{r}
+md_medianAge |> 
+  filter(estimate > 50 | estimate + moe > 50)
+```
+
+**Q3** We're interested in knowing more about Montgomery County zip codes where overdose calls are coming from and the demographic characteristics they possess. In particular, we want to calculate a rate of calls per 1,000 population. To do this, you'll need to:
+
+1.  Load the Montgomery County 911 overdose calls data.
+2.  Create a new dataframe with the total number of calls for each zip code.
+3.  Find the ACS variable pertaining to the total 18 and up population (there are several choices here; you want the simplest one).
+4.  Get from the ACS data from all Maryland zip codes using that variable - you will need to specify an earlier year to get the data.
+5.  Join the ACS data to the Montgomery County zip code totals dataframe and rename the estimate column to a meaningful name you've given the ACS variable.
+6.  Add a column to the joined dataframe that calculates a rate of calls per 1,000 population.
+
+Which zip code has the highest rate of calls? Which has the lowest?
+20889 has the highest rate of calls while 20707 has the lowest.
+**A3**
+
+```{r}
+moco911 <- read_csv("data/montgomery_2022_overdoses.csv")
+moco911ZipCode <- moco911 |> 
+  mutate(zip = as.character(zip)) |> 
+  group_by(zip) |> 
+  summarise(
+    totalCalls = n()
+  ) |> 
+  arrange(desc(totalCalls))
+
+mocoOver18Zip <- get_acs(geography="zcta", variables = "B09021_001", year=2022)
+
+moco911Over18 <- moco911ZipCode |> left_join(mocoOver18Zip, by=c('zip'='GEOID'))
+moco911Over18 <- moco911Over18 |> rename(popOver18 = estimate)
+moco911Over18 <- moco911Over18 |> 
+  mutate(
+    perCapita = (totalCalls/popOver18)*1000
+  ) |> 
+  arrange(desc(perCapita))
+
+moco911Over18
+```
+
+**Q4** Using [CensusReporter.org](https://censusreporter.org/), examine the zip codes with the highest and lowest rates and compare and contrast their demographic profiles. Is there a story here?
+**A4**
+Highest: 20889 which is NIH and Walter Reed. Barely any population and one overdose call which could be connected to the work done at Watler Reed or NIH.
+
+Highest with residential population: 20877
+In Gaithersburg with a per capita income at ~$38,000 and median income of ~$86,000. Fairly under the average of the DC-Metro area. 11% of the population is below the poverty line above the overall rate of the metro region. Half of the population is foreign-born with 64% of that population being from Latin America, followed by Asia (24%) and Africa (10%). Racially a large set of the population is Hispanic followed by White, Black and Asian being fairly split.
+
+Lowest: 20707
+Both zip codes have very similar population sizes. Technically this sip code is mostly in Prince George's but the city of Laurel overlaps with Montgomery County as well. Income is a lot higher here (~$49,000 per capita and ~$104,000 median). 7.5% of the population lives below the poverty line which is below the region's rate. 20877 doubles 20707's foreign-born population with the breakdown among the population being relatively more even (49% Latin America, 25% Africa, 23% Asia). Black people make up a significant amount of the racial demographics followed by White and Hispanic people which is the general vibe of Prince George's County.
+
+There may be a story here about a potential correlation between overdose rates, poverty and the nuances of racial breakdowns. The Gaithersburg zip code is also a lot more dense at 5.6 miles vs 20707's 12.6. Maybe there's a conversation about a potential required shift from all of the D.C. "suburbs" being monolithic when it comes to analysis like these.
+
+**Q5** Go back to your joined dataframe from Q3 and add two more columns representing the minimum and maximum populations based on the estimate and margin of error, then calculate per capita rates for each. Do you get the same two zip codes for the highest and lowest as you did before? Does that give you more or less confidence in your answers to Q3?
+
+**A5**
+Nothing really changes besides 20860 taking a slight edge of 20877 but that's only for two total calls with a population around 2000 people. It is demographically very different from the other two zip codes being nearly majority white with a per capita income double the Laurel zip code. The foreign born population (20% of total) is 44% Latin America and Asian Americans taking up 37%. I don't think we could get this but seeing what drugs people are overdosing on in this zip code vs the other two would be pretty interesting. It does reinforce my choice to omit the NIH zip code because it is at the top of the maxPerCapita sort but bottom of the minPerCapita, showing it's way too volatile to use (along with not being helpful considering overdoses are a residential/commerce area issue rather than medical institution problem).
+
+```{r}
+moco911Over18 |> 
+  mutate(
+    min = popOver18 - moe,
+    max = popOver18 + moe,
+    minPerCapita = (totalCalls/min)*1000,
+    maxPerCapita = (totalCalls/max)*1000
+  ) |> arrange(desc(minPerCapita))
+```
