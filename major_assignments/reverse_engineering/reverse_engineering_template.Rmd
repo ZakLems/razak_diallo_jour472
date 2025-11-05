@@ -1,7 +1,7 @@
 ---
 title: "Reverse Engineering Project"
-author: "Student names here"
-date: "Date here"
+author: "Aamaly Hossain, Razak Diallo, Deja Jones"
+date: "2025-10-16"
 output:
   html_document:
     theme: cerulean
@@ -18,22 +18,52 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction 
 
-In this notebook, we are reverse engineering the story, [STORY NAME](STORY URL)
+In this notebook, we are reverse engineering the story, [L.A. is slammed with record costs for legal payouts](https://www.latimes.com/local/lanow/la-me-ln-city-payouts-20180627-story.html)
+
+About: This story investigates how the City of Los Angeles has faced record-breaking legal costs due to lawsuits and settlements across city departments. The Times reporters found that legal payouts -- especially those involving the Los Angeles Police Department -- have surged over the past decade. Using a city database of more than 18,000 payouts obtained through a public records request, the reporters showed that 2017 had an unprecedented number of multimillion dollar settlements that LAPD-related cases accounted for over 40% of total costs. The story emphasizes how these rising legal costs strain the city's budget and contribute to financial challenges across departments. 
+
 
 ## Load libraries
 
 Loading required libraries for this analysis.
 
 ```{r echo=FALSE, message=FALSE}
-options(scipen=999)
+options(scipen=999) 
+library(readr)
 library(tidyverse)
+library(lubridate)
 library(janitor)
-#library(readxl)
+library(readxl)
 ```
 
 ## Load and Cleaning Data
 
 In this section, describe the source of the data, write a basic data dictionary for data you are working with, and discuss any caveats or issues you discovered working with this data. 
+
+The data used in this analysis was compiled by the Los Angeles Times through a public records request to the City of Los Angeles. It includes detailed information on every legal payout -- settlements, judgments and other payments made by the city from July 2005 to June 2018.
+
+Data Sources:
+- payouts.xlsx: A detailed record of individual legal payouts and settlements. Came from the city's financial or risk management database. Each row is a single payout and includes information such as the case type, the department, the payout amount and the date. This is the main dataset used to analyze trends, totals and patterns. 
+- casetypes.csv: A list of different types of legal cases. Likely exported from a city database tracking claims, lawsuits or settlements. Each row corresponds to a case category, such as police misconduct, dangerous conditions or other types of claims. This allows analysis of payouts by the type of legal case.  
+- departments.csv: A list of Los Angeles city departments. Came from internal city records or a public database of city departments. Each row represents a department responsible and the cleaned LA Times version of it. This allows analysis to be more simple and easy to run because it is standardized based on the departmental groups (becomes generic department name). 
+- department-totals.csv: Summary data showing total payouts per department. Aggregated data by departments from the payouts excel spreadsheet, and from other exported city reports. Each row shows a department and its aggregated statistics, such as total payout amounts and total number of cases. This is useful for quickly seeing which departments contribute most to legal costs in the city. 
+- type-totals.csv: Summary data showing total payouts per case type. Similar to department_totals.csv, derived from payouts_xlsx. Each row shows its LA Times case type (category) and its aggregated totals, showing which types of legal cases are most costly for the city. 
+
+Variables: 
+-’case_name’ = name of individual/company being paid 
+- 'case_number' = unique identifier for each case
+- 'amount' = dollar amount of payout (the amount paid for settlement or judgment) 
+- 'fiscal_year' = fiscal year where the payout occurred
+- 'department' = department associated with the payout
+- 'type' = category of legal case (police, traffic, dangerous condition)
+
+Notes and Caveats: 
+- Some payouts are missing department attribution which are excluded from department-level analysis. 
+- Amounts are in dollars. 
+- Case type descriptions require cleaning for capitalization and white space inconsistencies.
+- Some fiscal years have fewer records or none at all due to incomplete reporting or record errors. 
+- In some cases, the data is counted twice. Evelyn Davis (BC333166) was paid out by the LAPD for the wrongful death of her son but the $1.5 million she received is counted once in 2006, subtracted in 2007 and then added again in the same year.
+
 
 ```{r}
 # Load required data
@@ -45,13 +75,44 @@ department_totals <- read_csv("data/department-totals.csv")
 type_totals <- read_csv("data/type-totals.csv")
 
 # Clean required data and prepare for analysis if needed. 
-payouts <- clean_names(payouts)
+payouts <- payouts |> clean_names()
+payouts |> get_dupes(claim_number_case_number, case_name)
 ```
 
 ## Sentences to Engineer
 In this notebook, we are reverse engineering five sentences from the story.
 
 ### Sentence 1
+
+* **Sentence Text**: Beyond the mammoth cases, a pileup of other large payouts has padded the tab, a Times analysis of city payouts found.
+* **Analysis Summary**: We grouped payouts into quartiles and calculated totals. The results confirm that large payouts overwhelmed the total with the top 75% of payouts representing ~98.7% of the total. Although making up a nearly equal amount of the payouts, the lower quartile (payouts below $600) made up just 
+
+```{r}
+payouts |> summarize(
+    Q1 = quantile(amount, probs = 0.25, na.rm = TRUE),
+    Median = quantile(amount, probs = 0.5, na.rm = TRUE), 
+    Q3 = quantile(amount, probs = 0.75, na.rm = TRUE)
+  )
+
+payout_ranges <- payouts |>
+  mutate(range = case_when(
+    amount < quantile(amount, probs = 0.25, na.rm = TRUE) & amount > 0 ~ "Lower Quartile", #less than $600 (greater than 0 to avoid negative dupes)
+    amount >= quantile(amount, probs = 0.25, na.rm = TRUE) & amount < quantile(amount, probs = 0.75, na.rm = TRUE) ~ "IQR", #between 600 and 6300. Represents the middle 50% of the dataset (median is 1918).
+    amount >= quantile(amount, probs = 0.75, na.rm = TRUE) ~ "Upper Extreme" #greater than 6300. Represent the top 25% of payouts.
+  )) |>
+  group_by(range) |>
+  summarise(
+    total_amount = sum(amount),
+    number_of_payouts = n()
+    ) |>
+  arrange(desc(total_amount)) |>
+  mutate(pct_of_total = (total_amount / sum(total_amount, na.rm = TRUE)) * 100)
+
+payout_ranges
+```
+
+
+### Sentence 2
 
 * **Sentence text**: Last budget year, the city paid out 30 settlements of $1 million or more — five times as many as a decade before.
 
@@ -70,52 +131,64 @@ payouts |>
 30/6
 ```
 
-### Sentence 2
-
-* **Sentence text**: [Paste in sentence to engineer here]
-* **Analysis summary**: [Write up two to three sentences describing the results of your analysis.  Were you able to confirm the finding? If not, why not?]
-
-```{r}
-# Put code to reverse engineer sentence here
-
-# Display results of code below this codeblock
-
-```
-
 ### Sentence 3
 
-* **Sentence text**: [Paste in sentence to engineer here]
-* **Analysis summary**: [Write up two to three sentences describing the results of your analysis.  Were you able to confirm the finding? If not, why not?]
+* **The Times analyzed a city database listing more than 18,000 payouts dating back to July 2005, obtained through a public records request.**
+* **The dataset contains 18,703 rows, which confirms the reported number of payouts analyzed. It shows that indeed there are more than 18,000 payouts dating back to July 2005 since that is when the payouts excel spreadsheet dates to.**
 
 ```{r}
 # Put code to reverse engineer sentence here
+nrow(payouts)
 
 # Display results of code below this codeblock
-
+#18,703
 ```
 
 ### Sentence 4
 
-* **Sentence text**: [Paste in sentence to engineer here]
-* **Analysis summary**: [Write up two to three sentences describing the results of your analysis.  Were you able to confirm the finding? If not, why not?]
+* **Thousands of legal battles involving the Los Angeles Police Department … have added up to more than 40% of the total — a higher sum than any other city department, the analysis showed.**
+
+* **Calculating total payouts by department shows LAPD accounting for approximately 42.4% of the total, higher than any other city department, confirming this sentence from the LA Times. Additionally, the results showed that its payout amount came to $373,751,894.14, which is significantly higher than all the other departments. The following department is Public Works, which makes up nearly 24% of the total payouts -- from there it only decreases in percentage totals that make up the payouts.**
 
 ```{r}
 # Put code to reverse engineer sentence here
-
+department_totals |>
+mutate(pct_of_total = (amount/sum(amount)) * 100) |>
+arrange(desc(pct_of_total))
 # Display results of code below this codeblock
-
+#LAPD == 42.43863555145 <- total percent
 ```
 
 ### Sentence 5
 
-* **Sentence text**: [Paste in sentence to engineer here]
-* **Analysis summary**: [Write up two to three sentences describing the results of your analysis.  Were you able to confirm the finding? If not, why not?]
+* **Legal payouts for ‘dangerous conditions’ have rivaled and, last budget year, even exceeded the cost of lawsuits over police misconduct, the analysis found.**
+
+* **Based on this code, I can confirm that the sentence from LA Times is accurate. The results signify that legal payouts for "dangerous conditions" exceeded the cost of lawsuits over police misconduct in 2017 and 2018.**
 
 ```{r}
 # Put code to reverse engineer sentence here
+payouts <- payouts |>
+  mutate(case_type = str_trim(case_type),       
+         case_type = str_to_title(case_type))  
+
+dangerous_totals <- payouts |>
+  filter(str_detect(case_type, "Dangerous")) |>
+  group_by(fiscal_year) |>
+  summarise(dangerous_total = sum(amount)) |>
+arrange(desc(fiscal_year))
+
+police_totals <- payouts |>
+  filter(department == "Police Department") |>
+  group_by(fiscal_year) |>
+  summarise(police_total = sum(amount)) |>
+arrange(desc(fiscal_year))
+
+dangerous_totals
+police_totals
+
+dangerous_vs_police <- dangerous_totals |>
+  left_join(police_totals, by = "fiscal_year")
 
 # Display results of code below this codeblock
-
+dangerous_vs_police
 ```
-
--30-
