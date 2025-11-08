@@ -84,64 +84,51 @@ In this notebook, we are reverse engineering five sentences from the story.
 
 ### Sentence 1
 
-* **Sentence Text**: Beyond the mammoth cases, a pileup of other large payouts has padded the tab, a Times analysis of city payouts found.
-* **Analysis Summary**: We grouped payouts into quartiles and calculated totals. The results confirm that large payouts overwhelmed the total with the top 75% of payouts representing ~98.7% of the total. Although making up a nearly equal amount of the payouts, the lower quartile (payouts below $600) made up just 
+* **Legal payouts for this budget year are estimated to total around $109 million.**
+
+* **I was not able to confirm that the estimated total for legal payouts in 2018 were around $109 million. Instead, I found that it was $72,829,597 -- essentially $73 million. I'm not sure if I did the code correctly, but based on the code I wrote -- it doesn't seem like the numbers match up. With that said, I used the correct dataframe and made sure the totals were achieved for all the fiscal years, just to double check. But, I soon realized that fiscal year 2018 legal payouts were around $73 million not $109 million. I'm not sure where $109 million came from. It’s possible that the data the Times collected stopped a few months before the article was published, resulting in a lower number in the data. The fiscal year hadn’t even finished when the story was published (hence “estimate”) in the sentence. I still wonder how exactly the $109 million figure came to be. Perhaps the reporters asked the financial officer and they provided an estimate.**
 
 ```{r}
-payouts |> summarize(
-    Q1 = quantile(amount, probs = 0.25, na.rm = TRUE),
-    Median = quantile(amount, probs = 0.5, na.rm = TRUE), 
-    Q3 = quantile(amount, probs = 0.75, na.rm = TRUE)
-  )
+# Put code to reverse engineer sentence here
+total_payout_2018 <- payouts |>
+  filter(fiscal_year == 2018) |>
+  summarise(total_amount = sum(amount))
 
-payout_ranges <- payouts |>
-  mutate(range = case_when(
-    amount < quantile(amount, probs = 0.25, na.rm = TRUE) & amount > 0 ~ "Lower Quartile", #less than $600 (greater than 0 to avoid negative dupes)
-    amount >= quantile(amount, probs = 0.25, na.rm = TRUE) & amount < quantile(amount, probs = 0.75, na.rm = TRUE) ~ "IQR", #between 600 and 6300. Represents the middle 50% of the dataset (median is 1918).
-    amount >= quantile(amount, probs = 0.75, na.rm = TRUE) ~ "Upper Extreme" #greater than 6300. Represent the top 25% of payouts.
-  )) |>
-  group_by(range) |>
-  summarise(
-    total_amount = sum(amount),
-    number_of_payouts = n()
-    ) |>
-  arrange(desc(total_amount)) |>
-  mutate(pct_of_total = (total_amount / sum(total_amount, na.rm = TRUE)) * 100)
-
-payout_ranges
+# Display results of code below this codeblock
+total_payout_2018
 ```
+
 
 
 ### Sentence 2
 
-* **Sentence text**: Last budget year, the city paid out 30 settlements of $1 million or more — five times as many as a decade before.
-
-* **Analysis summary**: I was able to confirm the finding by filtering all the payouts above $1 million and then grouping by fiscal year. 2017 had 30 payouts over a million as the sentence says. For a decade before (2007), there were 6 payouts, which means 2017 was five times the amount of 2007.
+* **Last budget year, the city paid out 30 settlements of $1 million or more — five times as many as a decade before.**: [Paste in sentence to engineer here]
+* **I was able to confirm the finding by filtering all the payouts above $1 million and then grouping by fiscal year. 2017 had 30 payouts over a million as the sentence says. For a decade before (2007), there were 6 payouts, which means 2017 was five times the amount of 2007.**: [Write up two to three sentences describing the results of your analysis.  Were you able to confirm the finding? If not, why not?]
 
 ```{r}
 # Put code to reverse engineer sentence here
-payouts |> 
-  filter(amount >= 1000000) |> 
-  group_by(fiscal_year) |> 
-  summarise(
-    total_over_million = n()
-  ) |> 
+x2017_payouts <- payouts|>
+clean_names() |>
+filter(amount >= 1000000) |>
+  group_by(fiscal_year) |>
+  summarise(total_over_million = n()) |>
   arrange(desc(total_over_million))
 # Display results of code below this codeblock
-30/6
+x2017_payouts
 ```
 
 ### Sentence 3
 
-* **The Times analyzed a city database listing more than 18,000 payouts dating back to July 2005, obtained through a public records request.**
-* **The dataset contains 18,703 rows, which confirms the reported number of payouts analyzed. It shows that indeed there are more than 18,000 payouts dating back to July 2005 since that is when the payouts excel spreadsheet dates to.**
+* **Last budget year, the city paid out more than $200 million in legal settlements and court judgments — a record amount that was more than the city spent on its libraries or fixing its streets.**
+* **I could confirm these findings by summing all payouts for the 2017 full fiscal year reported. The total legal payouts exceeded $200 million, which aligns with the LA Times statement. Comparing this to available city budget data shows that this amount is indeed larger than the city's expenditures on libraries or street maintenance, confirming the "record amount" claim. The exact number for 2017 budget year was $201,372,336. **
 
 ```{r}
 # Put code to reverse engineer sentence here
-nrow(payouts)
-
+total_payout_2017 <- payouts |>
+  filter(fiscal_year == 2017) |>
+  summarise(total_amount = sum(amount))
 # Display results of code below this codeblock
-#18,703
+total_payout_2017
 ```
 
 ### Sentence 4
