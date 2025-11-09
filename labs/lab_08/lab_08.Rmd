@@ -17,6 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(tidycensus)
 library(lubridate)
+census_api_key("97c966d3d90dee645a5f275580b7778000f673fc", install=TRUE, overwrite = TRUE)
 ```
 
 
@@ -32,9 +33,7 @@ pg911 <- read_csv("data/prince_georges_2022_overdoses.csv")
 
 You will need to create columns for the date, week and month based on the existing `datetime` column.
 ```{r}
-#pg911 <-
-glimpse(pg911)
-pg911 |> 
+pg911<- pg911 |> 
   mutate(
     date = as_date(datetime),
     month = floor_date(datetime, unit = "month"),
@@ -54,8 +53,34 @@ pg911 |>
 Compare the results here to those from the pre_lab_08 bar chart - are there major differences in the months with the highest and lowest figures? Describe that below.
 
 **A1.**
-
+The biggest difference is that colder months like September - December are significantly higher than they were in Baltimore.
 ```{r}
+pg911Months <- pg911 |> 
+  group_by(month) |> 
+  summarise(
+    total = n(),
+    percentage = (total/nrow(pg911))*100
+    ) |> 
+  arrange(desc(month))
+
+#I feel like it made more sense for the graph to represent the totals instead of the perecentage here.
+#If I did do the percentage I would replace "total" below with "percentage"
+
+pg911Months |> 
+  mutate(
+    month = month(month, label=TRUE)
+  ) |> 
+   ggplot() +
+  geom_bar(aes(x=reorder(month,total), weight=total)) +
+  coord_flip() + 
+  theme_minimal() +
+  labs(
+    title="911 Overdose Calls in 2022 Prince George's County",
+    x = "Month",
+    y = "total calls",
+    caption = "source: Prince George's County EMS"
+    
+  )
 ```
 
 **Q2.** Let's visualize this data on a weekly basis using a line chart. As in Q1, generate a dataframe with the total number of calls for each week, and then create a line chart to show the distribution of calls over time. Your line chart must have:
@@ -65,10 +90,31 @@ Compare the results here to those from the pre_lab_08 bar chart - are there majo
 -   Readable labels
 
 Describe the pattern of results; you may want to look at the data to dig into particular outliers.
-
 **A2.**
-
+The week of July 10 is a major outlier that coaligns with the pre_lab idea that the summer sees an increase in overdose calls. The first week in the data (Dec. 26) is another outlier, likely because although the week started in 2021, the data begins in 2022, meaning it actually represents only one day (Jan. 1).
 ```{r}
+pg911Weeks <- pg911 |> 
+  group_by(week) |> 
+  summarise(
+    total = n(),
+    percentage = (total/nrow(pg911))*100
+    ) |> 
+  arrange(desc(week))
+
+pg911Weeks |> 
+  ggplot() + 
+  geom_line(aes(x=week, y=total)) + 
+  theme_minimal() +
+  labs(
+    title="Weekly 911 Overdose Calls in Prince George's County (2022)",
+    x = "Week",
+    y = "total calls",
+    caption = "source: Prince George's County EMS"
+    
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45,  hjust=1)
+  )
 ```
 
 **Q3.** A scatterplot is a type of chart that helps us see relationships between two variables. One variable goes on the x axis, the other on the y axis. For each row/observation in our data, a scatterplot puts a circle (or a "point") where the two variables intersect on a grid.
@@ -94,6 +140,23 @@ To answer this question, do the following:
 7.  In the answer space below, describe what you see and answer the questions posed above. In a general sense, what do you think this means? Feel free to consider the actual raw values: how would you report out the main point(s) of this chart?
 
 **A3.**
-
+I see a little correlation between median income and total 911 overdose calls. There may be a relationship between affluence and the amoutn of reported 911 overdose calls but again, pretty eh correlation. I would report that there is a slight relationship between overdose call rate and income but I think it would be more interesting to map out the results and see if there are any areas of the county that have higher overdose call rates. 
 ```{r}
+pg911Zip <- pg911 |> 
+  group_by(zipcode) |> 
+  summarise(
+    total = n()
+  )
+
+md_zipcodes <- get_acs(geography="zcta", variables = "B19013_001", state='MD', year=2019)
+
+pg911ZipIncome <- pg911Zip |> left_join(md_zipcodes, join_by(zipcode == GEOID))
+
+ggplot(data = pg911ZipIncome, aes(x = total, y = estimate)) +
+  geom_text(aes(label = zipcode), check_overlap = TRUE) +
+  geom_point() +
+  labs(title = "Basic Scatter Plot",
+       x = "Total 911 Calls",
+       y = "Zip Median Income",
+       caption = "source: Prince George's County EMS and US Census Bureau")
 ```
