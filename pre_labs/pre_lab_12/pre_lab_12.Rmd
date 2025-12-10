@@ -148,7 +148,7 @@ Let's say we are interested in 2023, so all we need to do now is to store that f
 ### Task 5: Save one table from the HTML source
 
 **Task** Run the following code in the gray-colored codeblock below to extract all tables in the HTML and save it as a dataframe. What do you notice about the columns? **Answer**
-
+The columns are the same as the list of 2 from the previous code block and they could be put in lowercase, have dates in the proper format, and do without the spaces.
 ```{r}
 # Read in all html from table, store all tables on page as nested list of dataframes.
 results <- mde_url |>
@@ -171,7 +171,7 @@ From here, we can do a little cleaning. First we'll use clean_names() to lower t
 ### Task 6: Clean up the data
 
 **Task** Run the following code to extract the table we want, clean up the names and change the date column to an actual date. Look at the dataframe; what other information about these releases might you want to add? **Answer**
-
+Maybe an excerpt from the press release would be helpful to have.
 ```{r}
 # Read in all html from table, get the HTML table.
 results <- mde_url |>
@@ -245,9 +245,9 @@ tags. What does the output suggest about how many
 <ul>
 
 tags there are in the HTML source? **Answer**
-
+There are 94 <li> tags. By modifying the code block I was able to find 7 ul tags meaning there are 7 different lists on the page.
 ```{r}
-osp_results |> html_elements('li')
+osp_results |> html_elements('ul')
 ```
 
 Good news and bad news here: we have all of the
@@ -267,7 +267,7 @@ tags. To do that, we add `html_text()` to the end of the last code block:
 <li>
 
 tags. Describe the output: **Answer**
-
+The output shows the text of the list items
 ```{r}
 osp_results |> html_elements('li') |> html_text()
 ```
@@ -281,7 +281,7 @@ Ok, so now we can see the press releases. But they are surrounded by a bunch of 
 tags into a dataframe
 
 **Task** Run the following code in the gray-colored codeblock below to make a dataframe. Describe the output: **Answer**
-
+The output shows all the text of all 94 list items, including menus.
 ```{r}
 releases <- osp_results |> html_elements('li') |> html_text() |> as_tibble()
 ```
